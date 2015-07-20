@@ -16,3 +16,6 @@ spec:
         image: redis
         ports:
         - containerPort: 6379
+      - name: collectd
+        image: gcr.io/cooltool-1009/collectd-redis
+        ports: []
