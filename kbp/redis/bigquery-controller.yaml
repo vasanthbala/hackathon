@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: bigquery
-        image: gcr.io/your-project/your-image
+        image: us.gcr.io/cooltool-1009/pipeline_image
         env:
         - name: PROCESSINGSCRIPT
           value: redis-to-bigquery
@@ -21,9 +21,9 @@ spec:
           value: twitter-stream
         # Change this to your project ID.
         - name: PROJECT_ID
-          value: xxxx
+          value: cooltool-1009
         # Change the following two settings to your dataset and table.
         - name: BQ_DATASET
-          value: xxxx
+          value: rtda
         - name: BQ_TABLE
-          value: xxxx
+          value: tweets
