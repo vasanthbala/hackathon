@@ -1,0 +1,30 @@
+Hostname "{IID}"
+
+Interval 60
+
+LoadPlugin logfile
+<Plugin "logfile">
+  LogLevel "info"
+  File "stdout"
+  #File "/var/log/collectd.log"
+  Timestamp true
+</Plugin>
+
+LoadPlugin write_http
+<Plugin "write_http">
+  <URL "https://{COLLECTD_ENDPOINT}/v1/agent?stackdriver-apikey={API_KEY}">
+    Format "JSON"
+    StoreRates true
+    # If bytes/sec drops below LowLimitBytesPerSec, abort connection.
+    #LowSpeedLimit true
+    #LowLimitBytesPerSec 100
+    # Abort posts that take longer than this many seconds.
+    #PostTimeoutSec 10
+  </URL>
+</Plugin>
+
+# if you have other config, especially for plugins, you can drop them
+# into this directory
+<Include "/etc/collectd/collectd.conf.d">
+  Filter "*.conf"
+</Include>
