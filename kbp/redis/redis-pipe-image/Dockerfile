@@ -10,5 +10,6 @@ ADD twitter-to-redis.py /twitter-to-redis.py
 ADD redis-to-bigquery.py /redis-to-bigquery.py
 ADD controller.py /controller.py
 ADD utils.py /utils.py
+ADD write_lightweight_metric.py /write_lightweight_metric.py
 
 CMD python controller.py

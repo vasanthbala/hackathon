@@ -24,6 +24,11 @@ from tweepy import OAuthHandler
 from tweepy import Stream
 from tweepy.streaming import StreamListener
 
+from write_lightweight_metric import WriteDataPoint
+
+TWEETS_RECEIVED_METRIC_NAME = \
+    'custom.cloudmonitoring.googleapis.com/tweets_received'
+
 # Get your twitter credentials from the environment variables.
 # These are set in the 'twitter-stream.json' manifest file.
 consumer_key = os.environ['CONSUMERKEY']
@@ -67,6 +72,8 @@ class StdOutListener(StreamListener):
             return False
         if (self.count % 1000) == 0:
             print 'count is: %s' % self.count
+        if (self.count % 100) == 0:
+            WriteDataPoint(TWEETS_RECEIVED_METRIC_NAME, self.count)
         return True
 
     def on_error(self, status):
