@@ -22,11 +22,15 @@ from apiclient.discovery import build
 import httplib2
 from oauth2client.gce import AppAssertionCredentials
 
-CUSTOM_METRIC_NAME = "custom.cloudmonitoring.googleapis.com/pid"
-
 
 def GetProjectId():
   """Read the numeric project ID from metadata service."""
+  global cached_project_id
+  try:
+    return cached_project_id
+  except NameError:
+    pass
+
   http = httplib2.Http()
   resp, content = http.request(
       ("http://metadata.google.internal/"
@@ -34,7 +38,17 @@ def GetProjectId():
       "GET", headers={"Metadata-Flavor": "Google"})
   if resp["status"] != "200":
     raise Exception("Unable to get project ID from metadata service")
+
+  cached_project_id = content
   return content
+
+
+def GetService():
+  """Create a cloudmonitoring service to call. Use OAuth2 credentials."""
+  credentials = AppAssertionCredentials(
+      scope="https://www.googleapis.com/auth/monitoring")
+  http = credentials.authorize(httplib2.Http())
+  return build(serviceName="cloudmonitoring", version="v2beta2", http=http)
 
 
 def GetNowRfc3339():
@@ -42,22 +56,18 @@ def GetNowRfc3339():
   return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
-def main():
+def WriteDataPoint(metric_name, value):
+  """Write a data point to the time series."""
   project_id = GetProjectId()
-
-  # Create a cloudmonitoring service to call. Use OAuth2 credentials.
-  credentials = AppAssertionCredentials(
-      scope="https://www.googleapis.com/auth/monitoring")
-  http = credentials.authorize(httplib2.Http())
-  service = build(serviceName="cloudmonitoring", version="v2beta2", http=http)
+  service = GetService()
 
   # Set up the write request.
   now = GetNowRfc3339()
   desc = {"project": project_id,
-          "metric": CUSTOM_METRIC_NAME}
+          "metric": metric_name}
   point = {"start": now,
            "end": now,
-           "doubleValue": os.getpid()}
+           "doubleValue": value}
   print "Writing %d at %s" % (point["doubleValue"], now)
 
   # Write a new data point.
@@ -67,17 +77,24 @@ def main():
         body={"timeseries": [{"timeseriesDesc": desc, "point": point}]})
     _ = write_request.execute()  # Ignore the response.
   except Exception as e:
-    print "Failed to read custom metric data: exception=%s" % e
+    print "Failed to write custom metric data: exception=%s" % e
     raise  # propagate exception
 
-  # Read all data points from the time series.
-  # When a custom metric is created, it may take a few seconds
-  # to propagate throughout the system. Retry a few times.
+
+def ReadDataPoints(metric_name):
+  """Read all data points from the time series.
+
+  When a custom metric is created, it may take a few seconds
+  to propagate throughout the system. Retry a few times.
+  """
+  project_id = GetProjectId()
+  service = GetService()
+
   print "Reading data from custom metric timeseries..."
   read_request = service.timeseries().list(
       project=project_id,
-      metric=CUSTOM_METRIC_NAME,
-      youngest=now)
+      metric=metric_name,
+      youngest=GetNowRfc3339())
   start = time.time()
   while True:
     try:
@@ -92,6 +109,12 @@ def main():
       else:
         print "Failed to read custom metric data, aborting: exception=%s" % e
         raise  # propagate exception
+
+
+def main():
+  metric_name = "custom.cloudmonitoring.googleapis.com/pid"
+  WriteDataPoint(metric_name, os.getpid())
+  ReadDataPoints(metric_name)
 
 
 if __name__ == "__main__":
