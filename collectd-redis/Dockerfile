@@ -1,7 +1,10 @@
 FROM ubuntu:trusty
-RUN apt-get install -y curl
-RUN apt-get update && apt-get install -y collectd libhiredis0.10
-COPY collectd.conf.tmpl /etc/collectd/
-COPY redis.conf /etc/collectd/collectd.conf.d/
+COPY stackdriver.list /etc/apt/sources.list.d/
+COPY RPM-GPG-KEY-stackdriver /
+RUN apt-key add /RPM-GPG-KEY-stackdriver
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get update && apt-get install -y curl libhiredis0.10 stackdriver-agent
+COPY collectd.conf.tmpl /opt/stackdriver/collectd/etc/
+COPY redis.conf /opt/stackdriver/collectd/etc/collectd.d/
 COPY run.sh /
 CMD ["/run.sh"]

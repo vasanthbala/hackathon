@@ -1,8 +1,8 @@
 #!/bin/bash
 
-COLLECTD=/usr/sbin/collectd
-CONFIG_FILE=/etc/collectd/collectd.conf
-CONFIG_TEMPLATE=/etc/collectd/collectd.conf.tmpl
+CONFIG_FILE=/opt/stackdriver/collectd/etc/collectd.conf
+CONFIG_TEMPLATE=/opt/stackdriver/collectd/etc/collectd.conf.tmpl
+DAEMON=/opt/stackdriver/collectd/sbin/stackdriver-collectd
 
 get_metadata() {
     curl -f -s -S -H "Metadata-Flavor: Google" \
@@ -26,4 +26,4 @@ COLLECTD_ENDPOINT=$(get_collectd_endpoint)
 
 sed -e "s/{IID}/$IID/; s/{API_KEY}/$API_KEY/; s|{COLLECTD_ENDPOINT}|$COLLECTD_ENDPOINT|" \
     $CONFIG_TEMPLATE > $CONFIG_FILE
-exec $COLLECTD -f -C $CONFIG_FILE
+exec $DAEMON -f -C $CONFIG_FILE
