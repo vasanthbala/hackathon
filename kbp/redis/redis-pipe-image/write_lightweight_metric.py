@@ -78,7 +78,6 @@ def WriteDataPoint(metric_name, value):
     _ = write_request.execute()  # Ignore the response.
   except Exception as e:
     print "Failed to write custom metric data: exception=%s" % e
-    raise  # propagate exception
 
 
 def ReadDataPoints(metric_name):
