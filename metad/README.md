@@ -76,3 +76,8 @@ resource_schema = {
 ```
 
 To see a chord diagram of the context graph of all resources and relations, do a GET on /context.
+
+## How to run this Web Server
+
+SSH into the kubernetes-master. Make sure you have the Cluster Insight data collector running there. Do a git clone to get the hackathon/metad directory locally. From this directory type ```python metadata-service.py```. If you get a permissions error, you need to download a client-secrets.json file from the project you are monitoring, then set the env variable GOOGLE_APPLICATION_CREDENTIALS to the path of the client-secrets.json file.
+
