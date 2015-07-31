@@ -17,5 +17,5 @@ spec:
         ports:
         - containerPort: 6379
       - name: collectd
-        image: gcr.io/cooltool-1009/collectd-redis
+        image: gcr.io/cooltool-1009/collectd-redis:latest
         ports: []
