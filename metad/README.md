@@ -79,5 +79,11 @@ To see a chord diagram of the context graph of all resources and relations, do a
 
 ## How to run this Web Server
 
-SSH into the kubernetes-master. Make sure you have the Cluster Insight data collector running there. Do a git clone to get the hackathon/metad directory locally. From this directory type ```python metadata-service.py```. If you get a permissions error, you need to download a client-secrets.json file from the project you are monitoring, then set the env variable GOOGLE_APPLICATION_CREDENTIALS to the path of the client-secrets.json file.
+SSH into the kubernetes-master. Do a git clone to get the hackathon GitHub directory locally. The sources for the web server are under ./hackathon/metad.
+
+Follow [these instructions](https://github.com/google/cluster-insight) to install and run the Cluster Insight context graph collector for Kubernetes. We will store this context metadata in the metadata store, and allow Big Query queries against it.
+
+Edit the constants at the top of hackathon/metad/metadata-service.py so they refer to the correct ID, NUMBER and ZONE of the project you want to monitor. This version is hardwired to provide a metadata storage service for one project only. Also check if the CLUSTER_INSIGHT_URL works when you call it locally on the kubernetes-master using curl.
+
+From the hackathon/metad directory type ```python metadata-service.py```. If you get a permissions error, you need to download a client-secrets.json file from the project you are monitoring, then set the env variable GOOGLE_APPLICATION_CREDENTIALS to the path of the client-secrets.json file.
 
