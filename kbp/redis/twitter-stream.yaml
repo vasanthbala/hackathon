@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: twitter-to-redis
-        image: us.gcr.io/cooltool-1009/pipeline_image
+        image: gcr.io/cooltool-1009/pipeline_image
         env:
         - name: PROCESSINGSCRIPT
           value: twitter-to-redis
