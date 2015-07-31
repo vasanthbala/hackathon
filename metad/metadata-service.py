@@ -14,9 +14,8 @@ from httplib2 import Http
 from apiclient.errors import HttpError
 
 
-PROJECT = 'cooltool-1009'
-ZONE = 'us-central1-b'
-PROJECT_NUMBER = '518787634948'
+PROJECT_NUMBER = '518787634948'     // cooltool-1009
+
 DATASET_ID = 'meta'
 TABLE_ID = 'resources'
 CLUSTER_INSIGHT_URL = 'http://localhost:8080/api/v1/proxy/namespaces/default/services/cluster-insight:cluster-insight/cluster'
