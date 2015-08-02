@@ -14,7 +14,7 @@ from httplib2 import Http
 from apiclient.errors import HttpError
 
 
-PROJECT_NUMBER = '518787634948'     // cooltool-1009
+PROJECT_NUMBER = '518787634948'     # cooltool-1009
 
 DATASET_ID = 'meta'
 TABLE_ID = 'resources'
