@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: metad
+spec:
+  replicas: 1
+  selector:
+    name: metad
+  template:
+    metadata:
+      labels:
+        name: metad
+    spec:
+      containers:
+      - name: metad
+        image: gcr.io/cooltool-1009/metad:latest
+        ports:
+          - containerPort: 5000
+        env:
+        - name: PROJECT
+          value: cooltool-1009

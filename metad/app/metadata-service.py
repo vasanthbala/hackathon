@@ -1,27 +1,19 @@
-import os
-import httplib2
-import sys
-import requests
-import simplejson as json
-import flask
 from collections import defaultdict
 import datetime
+import json
+import os
+
+import flask
+import requests
 
 from apiclient.discovery import build
-from oauth2client.client import GoogleCredentials
-from oauth2client.gce import AppAssertionCredentials
-from httplib2 import Http
 from apiclient.errors import HttpError
+from oauth2client.client import GoogleCredentials
 
 
-PROJECT_ID = 'cooltool-1009'
-PROJECT_NUMBER = '518787634948'
 DATASET_ID = 'meta'
 TABLE_ID = 'resources'
-CLUSTER_INSIGHT_URL = 'http://localhost:8080/api/v1/proxy/namespaces/default/services/cluster-insight:cluster-insight/cluster'
-#CLUSTER_INSIGHT_URL = 'http://199.223.236.105:5555/cluster'
 
-bq_service = None
 app = flask.Flask(__name__)
 
 resource_cache = None
@@ -57,27 +49,29 @@ def context_to_bqjson(context):
 @app.route("/")
 def help():
     api_help = [
-        "GET  /\t\t\t\t\tShow this help message.",
-        "GET  /resources\t\t\tList all resources.",
-        "GET  /resource/(id)\t\tShow detailed metadata for a specific resource.",
-        "GET  /update\t\t\tAutomatically update resource metadata from available sources.",
+        "<pre>",
+        "GET  /\t\t\tShow this help message.",
+        "GET  /resources\t\tList all resources.",
+        "GET  /resource/(id)\tShow detailed metadata for a specific resource.",
+        "GET  /update\t\tAutomatically update resource metadata from available sources.",
         "GET  /query/(BQ-query)\tQuery the metadata (Big Query query on dataset meta.resources).",
-        "\t\t\t\t\t\tExample: \"SELECT id FROM meta.resources",
-        "\t\t\t\t\t\t\t\t\tWHERE type='Container'",
-        "\t\t\t\t\t\t\t\t\tAND properties CONTAINS 'redis-master'\"",
+        "\t\t\tExample: \"SELECT id FROM meta.resources",
+        "\t\t\t\t\tWHERE type='Container'",
+        "\t\t\t\t\tAND properties CONTAINS 'redis-master'\"",
         " ",
-        "POST /resources\t\t\tManually update resource metadata with the given payload.",
-        "\t\t\t\t\t\tPayload schema:",
-        "\t\t\t\t\t\t{",
-        "\t\t\t\t\t\t\t'resources': [",
-        "\t\t\t\t\t\t\t\t{",
-        "\t\t\t\t\t\t\t\t\t'id': (string),",
-        "\t\t\t\t\t\t\t\t\t'properties': (dict),",
-        "\t\t\t\t\t\t\t\t\t'relations': (type-to-targets-dict),",
-        "\t\t\t\t\t\t\t\t},",
-        "\t\t\t\t\t\t\t\t...",
-        "\t\t\t\t\t\t\t]",
-        "\t\t\t\t\t\t}"
+        "POST /resources\t\tManually update resource metadata with the given payload.",
+        "\t\t\tPayload schema:",
+        "\t\t\t{",
+        "\t\t\t\t'resources': [",
+        "\t\t\t\t\t{",
+        "\t\t\t\t\t\t'id': (string),",
+        "\t\t\t\t\t\t'properties': (dict),",
+        "\t\t\t\t\t\t'relations': (type-to-targets-dict),",
+        "\t\t\t\t\t},",
+        "\t\t\t\t\t...",
+        "\t\t\t\t]",
+        "\t\t\t}",
+        "</pre>"
     ]
     return '\n'.join(api_help)
 
@@ -85,39 +79,38 @@ def help():
 @app.route("/reset", methods=["GET"])
 def reset_resources():
     # replace the current meta.resources table with a new empty table
+
     try:
-        list_response = bq_service.tables().list(projectId=PROJECT_NUMBER, datasetId=DATASET_ID).execute()
-        if list_response['totalItems'] > 0:
-            full_table_id = '%s:%s.%s' % (PROJECT_ID, DATASET_ID, TABLE_ID)
-            for table in list_response['tables']:
-                if table['id'] == full_table_id:
-                    # table already exists, need to delete it first
-                    print 'Deleting existing table'
-                    delete_response = bq_service.tables().delete(
-                        projectId=PROJECT_NUMBER, datasetId=DATASET_ID, tableId=TABLE_ID).execute()
-        # insert a new empty table
-        with open('resource.schema', 'r') as fp:
-            resource_schema = json.loads(fp.read())
-        insert_data = {
-            'schema': resource_schema,
-            'tableReference': {
-                'projectId': PROJECT_NUMBER,
-                'datasetId': DATASET_ID,
-                'tableId': TABLE_ID
-            }
+        delete_response = bq_service.tables().delete(
+            projectId=project_id, datasetId=DATASET_ID, tableId=TABLE_ID).execute()
+    except HttpError as err:
+        app.logger.warning('Table did not exist.')
+
+    with open('resource.schema', 'r') as fp:
+        resource_schema = json.loads(fp.read())
+
+    insert_data = {
+        'schema': resource_schema,
+        'tableReference': {
+            'projectId': project_id,
+            'datasetId': DATASET_ID,
+            'tableId': TABLE_ID
         }
-        print 'Creating new table'
+    }
+
+    try:
         insert_response = bq_service.tables().insert(
-            projectId=PROJECT_NUMBER, datasetId=DATASET_ID, body=insert_data).execute()
-        return  flask.jsonify(insert_response)
+            projectId=project_id, datasetId=DATASET_ID, body=insert_data).execute()
     except HttpError as err:
         return err.content
+
+    return flask.jsonify(insert_response)
 
 
 @app.route("/update", methods=["GET"])
 def update_resources_from_context():
     # get a fresh context snapshot and update the BQ meta.resources table
-    response = requests.get(CLUSTER_INSIGHT_URL)
+    response = requests.get(cluster_insight_url)
     context = response.json()
     resource_array = context_to_bqjson(context)
     try:
@@ -126,7 +119,7 @@ def update_resources_from_context():
             'rows': resource_array
         }
         update_response = bq_service.tabledata().insertAll(
-            projectId=PROJECT_NUMBER, datasetId=DATASET_ID, tableId=TABLE_ID, 
+            projectId=project_id, datasetId=DATASET_ID, tableId=TABLE_ID,
             body=update_data).execute()
         if 'insertErrors' in update_response:
             return  flask.jsonify(update_response)
@@ -168,7 +161,7 @@ def update_resources():
             'rows': resource_array
         }
         update_response = bq_service.tabledata().insertAll(
-            projectId=PROJECT_NUMBER, datasetId=DATASET_ID, tableId=TABLE_ID, 
+            projectId=project_id, datasetId=DATASET_ID, tableId=TABLE_ID,
             body=update_data).execute()
         if 'insertErrors' in update_response:
             return  flask.jsonify(update_response)
@@ -179,7 +172,6 @@ def update_resources():
         return err.content
 
 
-
 @app.route("/resources", methods=["GET"])
 def get_resources(internal=False):
     try:
@@ -187,7 +179,7 @@ def get_resources(internal=False):
             results = resource_cache
         else:
             query_data = {'query': 'SELECT id, type, relations.type, relations.targets from meta.resources'}
-            query_response = bq_service.jobs().query(projectId=PROJECT_NUMBER, body=query_data).execute()
+            query_response = bq_service.jobs().query(projectId=project_id, body=query_data).execute()
             resources = defaultdict(dict)
             if 'rows' in query_response:
                 for row in query_response['rows']:
@@ -221,7 +213,7 @@ def get_resource(resource_id):
         query_data = {
             'query': 'SELECT id, type, properties, annotations from meta.resources where id = "%s"' % resource_id
         }
-        query_response = bq_service.jobs().query(projectId=PROJECT_NUMBER, body=query_data).execute()
+        query_response = bq_service.jobs().query(projectId=project_id, body=query_data).execute()
         assert len(query_response['rows']) == 1
         row = query_response['rows'][0]
         assert len(row['f']) == len(['id', 'type', 'properties', 'annotations'])
@@ -243,7 +235,7 @@ def get_relations(resource_id, internal=False):
         query_data = {
             'query': 'SELECT relations.type, relations.targets from meta.resources where id = "%s"' % resource_id
         }
-        query_response = bq_service.jobs().query(projectId=PROJECT_NUMBER, body=query_data).execute()
+        query_response = bq_service.jobs().query(projectId=project_id, body=query_data).execute()
         results = defaultdict(list)
         for row in query_response['rows']:
             assert len(row['f']) == len(['type', 'target'])
@@ -261,7 +253,7 @@ def get_relations(resource_id, internal=False):
 def query_resources(query):
     try:
         query_data = {'query': query}
-        query_response = bq_service.jobs().query(projectId=PROJECT_NUMBER, body=query_data).execute()
+        query_response = bq_service.jobs().query(projectId=project_id, body=query_data).execute()
         results = []
         for row in query_response['rows']:
             results_row = []
@@ -320,28 +312,26 @@ def show_context():
             for target in relations[rtype]:
                 edges[rindex_table[target]] += 1
         relations_matrix.append(edges)
-    return flask.render_template('chord.html', 
+    return flask.render_template('chord.html',
         resources_csv='\n'.join(resources_csv),
         relations_matrix=json.dumps(relations_matrix))
 
+
 def init_bigquery():
-    api_key = os.environ.get('API_KEY', None)
-    if api_key:
-       print 'Using API_KEY environment variable.'
-       return build('bigquery', 'v2', developerKey=api_key)
-    else:
-       print 'Using AppAssertion credentials - set GOOGLE_APPLICATION_CREDENTIALS'
-       print ' to the client-secrets.json file if you get a permissions error.'
-       credentials = AppAssertionCredentials('https://www.googleapis.com/auth/bigquery')
-       http_auth = credentials.authorize(Http())
-       return build('bigquery', 'v2', http=http_auth)
-       """
-       credentials = GoogleCredentials.get_application_default()
-       return build('bigquery', 'v2', credentials=credentials)
-       """
+   credentials = GoogleCredentials.get_application_default()
+   return build('bigquery', 'v2', credentials=credentials)
+
 
 if __name__ == "__main__":
 
+    try:
+        cluster_insight_url = 'http://%s:%s/cluster' % (
+            os.environ['CLUSTER_INSIGHT_SERVICE_HOST'],
+            os.environ['CLUSTER_INSIGHT_SERVICE_PORT'],
+        )
+    except KeyError:
+        pass
+
+    project_id = os.environ['PROJECT']
     bq_service = init_bigquery()
     app.run(host='0.0.0.0', debug=True)
-    print 'here now'
