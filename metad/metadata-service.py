@@ -14,64 +14,17 @@ from httplib2 import Http
 from apiclient.errors import HttpError
 
 
-PROJECT_NUMBER = '518787634948'     # cooltool-1009
-
+PROJECT_ID = 'cooltool-1009'
+PROJECT_NUMBER = '518787634948'
 DATASET_ID = 'meta'
 TABLE_ID = 'resources'
-CLUSTER_INSIGHT_URL = 'http://localhost:8080/api/v1/proxy/namespaces/default/services/cluster-insight:cluster-insight/cluster'
+# CLUSTER_INSIGHT_URL = 'http://localhost:8080/api/v1/proxy/namespaces/default/services/cluster-insight:cluster-insight/cluster'
+CLUSTER_INSIGHT_URL = 'http://199.223.236.105:5555/cluster'
 
 bq_service = None
 app = flask.Flask(__name__)
 
 resource_cache = None
-
-resource_schema = {
-    'fields' : [
-        {
-            "name": "timestamp",
-            "type": "timestamp",
-            "mode": "nullable"
-        },    
-        {
-            "name": "properties",
-            "type": "string",
-            "mode": "nullable"
-        },
-        {
-            "name": "type",
-            "type": "string",
-            "mode": "nullable"
-        },
-        {
-            "name": "annotations",
-            "type": "string",
-            "mode": "nullable",
-        },
-        {
-            "name": "id",
-            "type": "string",
-            "mode": "nullable"
-        },
-        {
-            "name": "relations",
-            "type": "record",
-            "mode": "repeated",
-            "fields": [
-                {
-                    "name": "type",
-                    "type": "string",
-                    "mode": "nullable"
-                },
-                {
-                    "name": "targets",
-                    "type": "string",
-                    "mode": "repeated"
-                }
-            ]
-        }
-    ]
-}
-
 
 def context_to_bqjson(context):
     # convert into a dict of resources
@@ -133,16 +86,27 @@ def help():
 def reset_resources():
     # replace the current meta.resources table with a new empty table
     try:
-        delete_response = bq_service.tables().delete(
-            projectId=PROJECT_NUMBER, datasetId=DATASET_ID, tableId=TABLE_ID).execute()
+        list_response = bq_service.tables().list(projectId=PROJECT_NUMBER, datasetId=DATASET_ID).execute()
+        if list_response['totalItems'] > 0:
+            full_table_id = '%s:%s.%s' % (PROJECT_ID, DATASET_ID, TABLE_ID)
+            for table in list_response['tables']:
+                if table['id'] == full_table_id:
+                    # table already exists, need to delete it first
+                    print 'Deleting existing table'
+                    delete_response = bq_service.tables().delete(
+                        projectId=PROJECT_NUMBER, datasetId=DATASET_ID, tableId=TABLE_ID).execute()
+        # insert a new empty table
+        with open('resource.schema', 'r') as fp:
+            resource_schema = json.loads(fp.read())
         insert_data = {
             'schema': resource_schema,
             'tableReference': {
                 'projectId': PROJECT_NUMBER,
-                'datasetId': 'metadata',
-                'tableId': 'resources'
+                'datasetId': DATASET_ID,
+                'tableId': TABLE_ID
             }
         }
+        print 'Creating new table'
         insert_response = bq_service.tables().insert(
             projectId=PROJECT_NUMBER, datasetId=DATASET_ID, body=insert_data).execute()
         return  flask.jsonify(insert_response)
@@ -378,4 +342,4 @@ def init_bigquery():
 if __name__ == "__main__":
 
     bq_service = init_bigquery()
-    app.run(host='0.0.0.0', debug=True)
+    app.run(debug=True)
