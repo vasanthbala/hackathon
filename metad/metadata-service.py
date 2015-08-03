@@ -327,19 +327,21 @@ def show_context():
 def init_bigquery():
     api_key = os.environ.get('API_KEY', None)
     if api_key:
+       print 'Using API_KEY environment variable.'
        return build('bigquery', 'v2', developerKey=api_key)
     else:
-       print 'Env variable API_KEY is not set; using app default credentials instead.'
-       """
+       print 'Using AppAssertion credentials - set GOOGLE_APPLICATION_CREDENTIALS'
+       print ' to the client-secrets.json file if you get a permissions error.'
        credentials = AppAssertionCredentials('https://www.googleapis.com/auth/bigquery')
        http_auth = credentials.authorize(Http())
        return build('bigquery', 'v2', http=http_auth)
        """
        credentials = GoogleCredentials.get_application_default()
        return build('bigquery', 'v2', credentials=credentials)
-
+       """
 
 if __name__ == "__main__":
 
     bq_service = init_bigquery()
     app.run(host='0.0.0.0', debug=True)
+    print 'here now'
