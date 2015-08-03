@@ -1,0 +1,46 @@
+{
+    "fields": [
+        {
+            "mode": "nullable",
+            "name": "timestamp",
+            "type": "timestamp"
+        },
+        {
+            "mode": "nullable",
+            "name": "properties",
+            "type": "string"
+        },
+        {
+            "mode": "nullable",
+            "name": "type",
+            "type": "string"
+        },
+        {
+            "mode": "nullable",
+            "name": "annotations",
+            "type": "string"
+        },
+        {
+            "mode": "nullable",
+            "name": "id",
+            "type": "string"
+        },
+        {
+            "fields": [
+                {
+                    "mode": "nullable",
+                    "name": "type",
+                    "type": "string"
+                },
+                {
+                    "mode": "repeated",
+                    "name": "targets",
+                    "type": "string"
+                }
+            ],
+            "mode": "repeated",
+            "name": "relations",
+            "type": "record"
+        }
+    ]
+}
