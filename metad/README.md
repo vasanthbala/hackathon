@@ -24,7 +24,7 @@ To create or update metadata do a POST to the /resources endpoint. The POST body
 
 To fetch summarized metadata about all resources do a GET on /resources. To get detailed metadata about a specific resource do a GET on /resources/<id>.
 
-To query the metadata store do a GET on /resources/<BQ query string>, where BQ query string is a Big Query query string that follows this BQ table schema:
+To query the metadata store do a GET on /resources/<BQ query string>, where BQ query string is a BigQuery query string that follows this BQ table schema:
 
 ```javascript
 resource_schema = {
@@ -79,14 +79,28 @@ To see a chord diagram of the context graph of all resources and relations, do a
 
 ## How to run this Web Server
 
-SSH into the kubernetes-master. Do a git clone to get the hackathon GitHub directory locally. The sources for the web server are under ./hackathon/metad.
+Follow [these instructions](https://github.com/google/cluster-insight) to install and run the Cluster Insight context graph collector for Kubernetes. We will store this context metadata in the metadata store, and allow BigQuery queries against it.
 
-Follow [these instructions](https://github.com/google/cluster-insight) to install and run the Cluster Insight context graph collector for Kubernetes. We will store this context metadata in the metadata store, and allow Big Query queries against it.
+Build and upload a Docker image by executing the following commands in the `metad` directory. Replace `PROJECT` with the ID of the project that you want to instrument.
 
-Edit the definition of PROJECT_NUMBER at the top of hackathon/metad/metadata-service.py to refer to the project you want to monitor. This version is hardwired to provide a metadata storage service for one project only. Also check if the CLUSTER_INSIGHT_URL works when you call it locally on the kubernetes-master using curl.
+    docker build -t gcr.io/PROJECT/metad .
+    gcloud docker push gcr.io/PROJECT/metad
 
-From the hackathon/metad directory type ```python metadata-service.py```. If you get a permissions error, you need to download a client-secrets.json file from the project you are monitoring, then set the env variable GOOGLE_APPLICATION_CREDENTIALS to the path of the client-secrets.json file.
+There are two instances of the project ID in the file `metad-controller.yaml`. Update both to refer to your own project, and then create the `metad` replication controller and service as follows:
 
-By default the web server listens to port 5000 on the kubernetes-master host. To access this from outside the cluster, you must create a firewall rule in your project to allow external tcp access to port 5000.
+    kubectl create -f metad-controller.yaml
+    kubectl create -f metad-service.yaml
 
-From a browser type: <External IP addr of kubernetes-master>:5000/ and you will get a help message. Try the endpoints /resources and /context.
+Run the following command, and look for the value of `LoadBalancer Ingress`:
+
+    kubectl describe service metad
+
+Calling that IP address `LBIP`, visit `http://LBIP:5000/` in your browser and confirm that you get a help message.
+
+To load all of the resource metadata for your project into BigQuery, first execute the following command to create the required BigQuery database:
+
+    bq mk meta
+
+Then visit `http://LBIP:5000/reset` to create the BigQuery table `meta.resources`, followed by `http://LBIP:5000/update` to fill it.
+
+Now try the endpoints `http://LBIP:5000/resources` and `http://LBIP:5000/context`.
