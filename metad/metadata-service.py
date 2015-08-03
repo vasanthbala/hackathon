@@ -18,8 +18,8 @@ PROJECT_ID = 'cooltool-1009'
 PROJECT_NUMBER = '518787634948'
 DATASET_ID = 'meta'
 TABLE_ID = 'resources'
-# CLUSTER_INSIGHT_URL = 'http://localhost:8080/api/v1/proxy/namespaces/default/services/cluster-insight:cluster-insight/cluster'
-CLUSTER_INSIGHT_URL = 'http://199.223.236.105:5555/cluster'
+CLUSTER_INSIGHT_URL = 'http://localhost:8080/api/v1/proxy/namespaces/default/services/cluster-insight:cluster-insight/cluster'
+#CLUSTER_INSIGHT_URL = 'http://199.223.236.105:5555/cluster'
 
 bq_service = None
 app = flask.Flask(__name__)
@@ -342,4 +342,4 @@ def init_bigquery():
 if __name__ == "__main__":
 
     bq_service = init_bigquery()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=True)
